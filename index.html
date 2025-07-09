@@ -306,6 +306,7 @@
       let currentQuestionIndex = 0;
       let timer;
       let timeLeft = 5;
+      let shownQuestions = new Set(); // Track shown questions by their index
 
       // Toggle sidebar
       function toggleSidebar() {
@@ -410,6 +411,30 @@
         return result;
       }
 
+      // Get random questions that haven't been shown yet
+      function getRandomQuestions(count) {
+        // Get all question indices that haven't been shown
+        const availableIndices = allQuestions
+          .map((_, index) => index)
+          .filter((index) => !shownQuestions.has(index));
+
+        // If not enough questions left, reset the shown questions
+        if (availableIndices.length < count) {
+          shownQuestions.clear();
+          return getRandomQuestions(count);
+        }
+
+        // Shuffle and select the requested number of questions
+        const shuffled = [...availableIndices].sort(() => 0.5 - Math.random());
+        const selectedIndices = shuffled.slice(0, count);
+
+        // Mark these questions as shown
+        selectedIndices.forEach((index) => shownQuestions.add(index));
+
+        // Return the actual question objects
+        return selectedIndices.map((index) => allQuestions[index]);
+      }
+
       // Start the quiz
       startQuizBtn.addEventListener("click", () => {
         if (allQuestions.length < 10) {
@@ -417,10 +442,8 @@
           return;
         }
 
-        // Select 10 random questions
-        quizQuestions = [...allQuestions]
-          .sort(() => 0.5 - Math.random())
-          .slice(0, 10);
+        // Get 10 random questions that haven't been shown before
+        quizQuestions = getRandomQuestions(10);
         currentQuestionIndex = 0;
 
         quizDiv.style.display = "block";
@@ -428,26 +451,6 @@
         showQuestion();
       });
 
-      // Show answer button
-      showAnswerBtn.addEventListener("click", () => {
-        answerContainer.style.display = "block";
-        timerDisplay.classList.remove("pulse");
-      });
-
-      // Next question button
-      nextBtn.addEventListener("click", () => {
-        currentQuestionIndex++;
-        answerContainer.style.display = "none";
-
-        if (currentQuestionIndex < quizQuestions.length) {
-          showQuestion();
-        } else {
-          // Quiz finished
-          endQuiz();
-        }
-      });
-
-      // Display the current question
       // Display the current question
       function showQuestion() {
         // Reset timer and UI
@@ -485,15 +488,27 @@
             timerDisplay.textContent = "⏱️ TIME UP!";
             timerDisplay.style.color = "#ff1744";
             timerDisplay.classList.remove("pulse");
-            // Don't automatically show answer - only show if user clicked Reveal Answer
           }
         }, 1000);
       }
 
-      // Show answer button - ONLY way to reveal answer
+      // Show answer button
       showAnswerBtn.addEventListener("click", () => {
         answerContainer.style.display = "block"; // Show answer when clicked
         timerDisplay.classList.remove("pulse");
+      });
+
+      // Next question button
+      nextBtn.addEventListener("click", () => {
+        currentQuestionIndex++;
+        answerContainer.style.display = "none";
+
+        if (currentQuestionIndex < quizQuestions.length) {
+          showQuestion();
+        } else {
+          // Quiz finished
+          endQuiz();
+        }
       });
 
       // End the quiz
@@ -511,9 +526,31 @@
         restartBtn.id = "restart-btn";
         restartBtn.textContent = "Play Again";
         restartBtn.addEventListener("click", () => {
-          location.reload();
+          resetQuizUI();
+
+          // Get new random questions (excluding previously shown ones)
+          quizQuestions = getRandomQuestions(10);
+          currentQuestionIndex = 0;
+
+          showQuestion();
         });
         quizDiv.appendChild(restartBtn);
+      }
+
+      // Reset the quiz UI for a new round
+      function resetQuizUI() {
+        // Remove the restart button if it exists
+        const existingRestartBtn = document.getElementById("restart-btn");
+        if (existingRestartBtn) {
+          existingRestartBtn.remove();
+        }
+
+        // Reset UI elements
+        showAnswerBtn.style.display = "block";
+        nextBtn.style.display = "block";
+        answerContainer.style.display = "none";
+        nextBtn.disabled = true;
+        showAnswerBtn.disabled = false;
       }
     </script>
   </body>
